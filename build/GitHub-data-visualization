@@ -97,10 +97,3 @@ github_issues_by_status_fig = github_issues_by_status.unstack().plot(kind='bar',
 #Create Folium HeatMap for issues that have Priority equals to Critical
 github_issues_heat_map = folium.Map([41.891551, -87.607375],zoom_start = 16)
 github_issues_heat_map.add_child(plugins.HeatMap(github_issues_coord,radius=15))
-
-
-
-
-
-
-
