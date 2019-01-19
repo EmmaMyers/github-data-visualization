@@ -1,0 +1,106 @@
+import os
+import _pickle as pickle
+import pandas as pd                                    # panda's nickname is pd
+import numpy as np                                     # numpy as np
+from pandas import DataFrame, Series                   # for convenience
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+#Lets read the issues from the JSON file and plot them in a stacked chart
+# Read the JSON file and load the data into a list of dictionaries
+import json
+list_of_issues_dict_data = [json.loads(line) for line in open('GitHub_issues.json')]
+
+# Create the DataFrame object for the list_of_issues_dict_data object
+issues_df = DataFrame(list_of_issues_dict_data)
+
+# Sanity test: print first 5 rows in our DataFrame
+issues_df.head()
+
+# Prepare and Clean the dataframe object
+
+wrangled_issues_df = issues_df[['Author','State','closed_at','created_at','issue_number']]
+wrangled_issues_df.loc[0:len(wrangled_issues_df), 'OriginationPhase']= np.NaN
+
+wrangled_issues_df.loc[0:len(wrangled_issues_df),'DetectionPhase']= np.NaN
+wrangled_issues_df.loc[0:len(wrangled_issues_df),'Category']= np.NaN
+wrangled_issues_df.loc[0:len(wrangled_issues_df),'Priority']= np.NaN
+wrangled_issues_df.loc[0:len(wrangled_issues_df),'Status']= np.NaN
+wrangled_issues_df.loc[0:len(wrangled_issues_df),'Address']= np.NaN
+wrangled_issues_df.loc[0:len(wrangled_issues_df),'Latitude']= np.NaN
+wrangled_issues_df.loc[0:len(wrangled_issues_df),'Longitude']= np.NaN
+
+#Sanity test the content of the datframe object
+wrangled_issues_df.head()
+
+# we need to create a list of the key:value pairs in labels
+
+for i in range(0, len(issues_df)):
+    
+    if issues_df.iloc[i]['labels']:
+        for label in issues_df.iloc[i]['labels']:
+#            print(label)
+            label_name= (label.split(':'))[0]
+            label_value= (label.split(':'))[1]
+            wrangled_issues_df.loc[i, label_name]=label_value
+            
+#Sanity test the content of the datframe object
+wrangled_issues_df.head()
+
+#Plot in Stacked Bar Chart the total number of issues created every day for every Detaction Phase
+github_issues_by_date_created_detectionphase = wrangled_issues_df.groupby(['created_at','DetectionPhase']).created_at.count()
+github_issues_by_date_created_detectionphase_fig = github_issues_by_date_created_detectionphase.unstack().plot(kind='bar',stacked=True,  color=['blue','yellow', 'purple', 'red', 'green'], grid=False)
+
+# Plot in Stacked Bar Chart the total number of issues created for detection Phase based on thier priorites
+github_issues_by_priority_detectionphase = wrangled_issues_df.groupby(['Priority','DetectionPhase']).created_at.count()
+github_issues_by_priority_detectionphase_fig = github_issues_by_priority_detectionphase.unstack().plot(kind='bar',stacked=True,  color=['blue','yellow', 'purple', 'red', 'green'], grid=False)
+
+#Plot in Stacked Bar Chart the total number of issues closed every day for every Category
+github_issues_by_closed_date_category = wrangled_issues_df.groupby(['closed_at','Category']).closed_at.count()
+github_issues_by_closed_date_category_fig = github_issues_by_closed_date_category.unstack().plot(kind='bar',stacked=True,  color=['blue', 'purple', 'red'], grid=False)
+
+#We will use Folium HeatMap to plot on a HeatMap our GitHub issues using Latitude and Longitude pairs.
+import folium
+from folium import plugins
+
+# Lets take a VERTICAL SLICE  ['Latitude','Longitude'] of the dataframe object
+df_lat_lng = wrangled_issues_df[['Latitude','Longitude']]
+
+#Sanity test the content of the datframe object
+df_lat_lng.head()
+
+# Lets create a list of ['Latitude','Longitude'] pairs to feed into the HeatMap object
+github_issues_coord = []
+
+for i in range(0, len(df_lat_lng)):
+    location_ll = []
+    if ( pd.notnull(df_lat_lng.iloc[i]['Latitude']) and  pd.notnull(df_lat_lng.iloc[i]['Longitude'])):
+#        print(df_lat_lng.iloc[i]['Latitude'], df_lat_lng.iloc[i]['Longitude'])
+        location_ll.append(float(df_lat_lng.iloc[i]['Latitude']))
+        location_ll.append(float(df_lat_lng.iloc[i]['Longitude']))
+        github_issues_coord.append(location_ll)
+
+github_issues_heat_map = folium.Map([41.891551, -87.607375],zoom_start = 16)
+github_issues_heat_map.add_child(plugins.HeatMap(github_issues_coord,radius=15))
+
+# interact with the map below by zooming in/out
+# Experiment with zoom_start and radius parameters of the HeatMap by using differen values
+
+#Plot in Stacked Bar Chart the total number of issues closed every day for every Origination Phase
+github_issues_by_date_created_originationphase = wrangled_issues_df.groupby(['created_at','OriginationPhase']).created_at.count()
+github_issues_by_date_created_originationphase_fig = github_issues_by_date_created_originationphase.unstack().plot(kind='bar',stacked=True,  color=['blue','yellow', 'purple', 'red', 'green'], grid=False)
+
+#Plot in Stacked Bar Chart the total number of issues created for every Phase based on their Status
+github_issues_by_status = wrangled_issues_df.groupby(['Status','OriginationPhase','DetectionPhase']).created_at.count()
+github_issues_by_status_fig = github_issues_by_status.unstack().plot(kind='bar',stacked=True,  color=['blue','yellow', 'purple', 'red', 'green'], grid=False)
+
+#Create Folium HeatMap for issues that have Priority equals to Critical
+github_issues_heat_map = folium.Map([41.891551, -87.607375],zoom_start = 16)
+github_issues_heat_map.add_child(plugins.HeatMap(github_issues_coord,radius=15))
+
+
+
+
+
+
+
